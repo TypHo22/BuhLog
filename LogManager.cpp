@@ -1,17 +1,14 @@
 #include <LogManager.h>
 #include <QDir>
-LogManager::LogManager():maxFileSize_(-1),maxLogSeconds_(-1),oneLogFile_(true)
+
+LogManager::LogManager():maxFileSize_(-1),maxLogSeconds_(-1),singleLog_(true)
 {
 
 }
 
 LogManager::~LogManager()
 {
-    for(auto& f : files_)
-    {
-        f.file_->close();
-        delete f.file_;
-    }
+
 }
 
 QFile* LogManager::getFile()
@@ -20,12 +17,12 @@ QFile* LogManager::getFile()
     {
         addNewFile();
 
-        return files_.front().file_;
+        return files_.front().file_.get();
     }
 
     LogFile* pickedLog = nullptr;
 
-    if(oneLogFile_)
+    if(singleLog_)
     {
         pickedLog = singleLog();
     }
@@ -34,25 +31,19 @@ QFile* LogManager::getFile()
         pickedLog = multiLog();
     }
 
-    return pickedLog->file_;
+    return pickedLog->file_.get();
 }
 
 void LogManager::addNewFile()
 {
-    QString name;
-
-    if(requestedThread_.isEmpty())
-    {
-        name = "logFile_" + QDateTime::currentDateTime().toString();
-    }
-    else
-    {
-        name = requestedThread_ + "_" + QDateTime::currentDateTime().toString();
-    }
+    QString name = requestedThread_ + "_" + QDateTime::currentDateTime().toString();
 
     name = QDir::currentPath() + QDir::separator() + name;
 
-    files_.emplace_back(LogFile{new QFile(name),requestedThread_,QDateTime::currentDateTime()});
+    files_.emplace_back(LogFile{std::make_unique<QFile>(name),
+                                requestedThread_,
+                                QDateTime::currentDateTime()});
+
     files_.back().file_->open(QIODevice::Append);
 }
 
@@ -65,8 +56,6 @@ void LogManager::removeFile(LogFile* pickedLog)
     });
 
     pickedLog->file_->close();
-    delete pickedLog->file_;
-    pickedLog->file_ = nullptr;
     files_.erase(logIt);
 }
 
@@ -143,14 +132,20 @@ void LogManager::setRequestedThread(const QString &requestedThread)
     requestedThread_ = requestedThread;
 }
 
-void LogManager::setOneLogFile(bool oneLogFile)
+void LogManager::closeAll()
 {
-    oneLogFile_ = oneLogFile;
+    for(const auto& f : files_)
+        f.file_.get()->close();
 }
 
 void LogManager::setMaxLogSeconds(int maxLogSeconds)
 {
     maxLogSeconds_ = maxLogSeconds;
+}
+
+void LogManager::setSingleLog(bool singleLog)
+{
+    singleLog_ = singleLog;
 }
 
 void LogManager::setMaxFileSize(int maxFileSize)
