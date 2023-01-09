@@ -1,16 +1,35 @@
 #include <BuhLog.h>
 #include <QThread>
+#include <QDebug>
+#include <QFile>
+#include <QDateTime>
+#include <QDir>
+#include <QTextStream>
+#include <QtConcurrent>
+#include <sstream>
+
 Q_LOGGING_CATEGORY(network,"network");
 Q_LOGGING_CATEGORY(server,"server");
 Q_LOGGING_CATEGORY(client,"client");
 
-QString BuhLog::filename_ = QDir::currentPath() + QDir::separator() + "log2.txt";
 bool BuhLog::logging_ = false;
+LogManager* BuhLog::manager_ = new LogManager;
 
 static const QtMessageHandler QT_DEFAULT_MESSAGE_HANDLER = qInstallMessageHandler(nullptr);
-
+QMutex mut;
+void dumpToFile(QFile *file, const QString &logMsg)
+{
+    QTextStream ts(file);
+    ts << logMsg << "\n";
+    ts.flush();
+}
 
 BuhLog::BuhLog()
+{
+
+}
+
+BuhLog::~BuhLog()
 {
 
 }
@@ -31,34 +50,32 @@ void BuhLog::attach()
 
     QSysInfo sys;
 
-    qInfo() << "System Info";
-    qInfo() << "Boot Id: " << sys.bootUniqueId();
-    qInfo() << "Build: " << sys.buildAbi();
-    qInfo() << "Cpu: " << sys.buildCpuArchitecture();
-    qInfo() << "Kernel: " << sys.kernelType();
-    qInfo() << "Version: " << sys.kernelVersion();
+    //qInfo() << "System Info";
+    //qInfo() << "Boot Id: " << sys.bootUniqueId();
+    //qInfo() << "Build: " << sys.buildAbi();
+    //qInfo() << "Cpu: " << sys.buildCpuArchitecture();
+    //qInfo() << "Kernel: " << sys.kernelType();
+    //qInfo() << "Version: " << sys.kernelVersion();
+    //
+    //qInfo() << "Host: " << sys.machineHostName();
+    //qInfo() << "Product: " << sys.prettyProductName();
+    //qInfo() << "Type: " << sys.productType();
+    //qInfo() << "Version: " << sys.productVersion();
 
-    qInfo() << "Host: " << sys.machineHostName();
-    qInfo() << "Product: " << sys.prettyProductName();
-    qInfo() << "Type: " << sys.productType();
-    qInfo() << "Version: " << sys.productVersion();
-
-#ifdef Q_OS_LINUX
-    qInfo() << "Linux code here";
-#elif defined(Q_OS_WIN)
-    qInfo() << "Windows code here";
-#elif defined(Q_OS_MACX)
-    qInfo() << "Mac code here";
-#else
-    qInfo() << "Unknown OS code here";
-#endif
+//#ifdef Q_OS_LINUX
+//    qInfo() << "Linux code here";
+//#elif defined(Q_OS_WIN)
+//    qInfo() << "Windows code here";
+//#elif defined(Q_OS_MACX)
+//    qInfo() << "Mac code here";
+//#else
+//    qInfo() << "Unknown OS code here";
+//#endif
 }
 
 void BuhLog::handler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
-    QThread* t = QThread::currentThread();
-    Qt::HANDLE hand = t->currentThreadId();
-    std::thread::id this_id = std::this_thread::get_id();
+
     if(BuhLog::logging_)
     {
         QString txt;
@@ -79,23 +96,26 @@ void BuhLog::handler(QtMsgType type, const QMessageLogContext &context, const QS
             txt = QString("Fatal: %1").arg(msg);
             break;
         }
+        mut.lock();
+        std::stringstream ss;
+        ss << std::this_thread::get_id();
+        QString threadId = QString::fromStdString(ss.str());
 
-        QFile file(BuhLog::filename_);
-        if(file.open(QIODevice::Append))
-        {
-            QTextStream ts(&file);
+        QString logMsg;
+        logMsg.append(QDateTime::currentDateTime().toString() + " - ");
+        logMsg.append(context.category);
+        logMsg.append(" ");
+        logMsg.append("Log: " + txt + " ");
+        logMsg.append("From Thread: " + threadId + " ");
 
-            ts << QDateTime::currentDateTime().toString() << " - "
-               << txt <<" "
-               << context.file <<" "
-               << context.category <<" "
-               << " line: " << context.line
-               << '\r' << '\n';
-            ts.flush();
-            file.close();
-        }
+
+        manager_->setRequestedThread(threadId);
+        QFile* file = manager_->getFile();
+
+        mut.unlock();
+
+        QtConcurrent::run(dumpToFile,file,logMsg);
     }
-
     (*QT_DEFAULT_MESSAGE_HANDLER)(type, context, msg);
 }
 
@@ -138,5 +158,14 @@ void BuhLog::setLogging(bool logging, const QString &category, QtMsgType type)
 
     QLoggingCategory::setFilterRules(cmd);
 }
+
+void BuhLog::configureLogger(bool singleLogFile, int maxFileSize, int maxLogSeconds)
+{
+    manager_->setOneLogFile(singleLogFile);
+    manager_->setMaxFileSize(maxFileSize);
+    manager_->setMaxLogSeconds(maxLogSeconds);
+}
+
+
 
 
