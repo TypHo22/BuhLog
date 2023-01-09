@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
 
     BuhLog::startUp();
-    BuhLog::configureLogger(true,-1,60); //ThreadWise Logging, no file limitation, new file every 10 seconds
+    BuhLog::configureLogger(false,-1,10); //SingleFile Logging, no file limitation, new file every 10 seconds
 
     qInfo(network()) << "A sample message";
 

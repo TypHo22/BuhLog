@@ -4,6 +4,7 @@
 #include <QLoggingCategory>
 //BuhLog
 #include <LogManager.h>
+#include <ThreadPool.h>
 //STL
 #include <memory>
 #include <thread>
@@ -69,6 +70,7 @@ private:
     static bool logging_;
     static QString filename_;
     static std::unique_ptr<LogManager> manager_;
+    static ThreadPool pool_;
 };
 
 #endif //BUHLOG_H

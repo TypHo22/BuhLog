@@ -17,6 +17,7 @@ include_directories(BuhLog
 add_executable(BuhLog main.cpp
                  ${CMAKE_CURRENT_SOURCE_DIR}/BuhLog.cpp
                  ${CMAKE_CURRENT_SOURCE_DIR}/LogManager.cpp
+                 ${CMAKE_CURRENT_SOURCE_DIR}/ThreadPool.cpp
                  )
 
 target_link_libraries(BuhLog Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Concurrent pthread)

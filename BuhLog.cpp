@@ -16,6 +16,7 @@ Q_LOGGING_CATEGORY(client,"client");
 
 bool BuhLog::logging_ = false;
 std::unique_ptr<LogManager> BuhLog::manager_ = std::make_unique<LogManager>();
+ThreadPool BuhLog::pool_ = ThreadPool(3);
 static const QtMessageHandler QT_DEFAULT_MESSAGE_HANDLER = qInstallMessageHandler(nullptr);
 std::mutex mut;
 
@@ -109,12 +110,7 @@ void BuhLog::logMessage(QtMsgType type, const QMessageLogContext &context, const
         logMsg.append("Log: " + txt + " ");
         logMsg.append("From Thread: " + threadId + " ");
 
-        mut.lock();
-        manager_->setRequestedThread(threadId);
-        QFile* file = manager_->getFile();
-        std::thread t = std::thread(dumpToFile,file,logMsg);
-        t.detach();
-        mut.unlock();
+        pool_.addTask(Task(logMsg,threadId,manager_.get()));
     }
 
     (*QT_DEFAULT_MESSAGE_HANDLER)(type, context, msg);
@@ -171,6 +167,7 @@ void BuhLog::shutDown()
 {
     logging_ = false;
     manager_->closeAll();
+    pool_.stop();
 }
 
 
