@@ -27,7 +27,6 @@ In BuhLog folder
 > cmake ..   
 > make -j8
 
-Build and tested on Linux Ubuntu
-Ubuntu 20.04.5 LTS
+Build and tested on Linux Ubuntu 20.04.5 LTS
 
 
