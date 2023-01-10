@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     QCoreApplication a(argc, argv);
 
     BuhLog::startUp();
-    BuhLog::configureLogger(false,-1,10); //SingleFile Logging, no file limitation, new file every 10 seconds
+    BuhLog::configureLogger(false,-1,10); //SingleFile Logging = false, no file limitation, new file every 10 seconds
 
     qInfo(network()) << "A sample message";
 
@@ -31,7 +31,8 @@ int main(int argc, char *argv[])
     qInfo(client) << "Again sample message";
 
     //write from multiple threads
-    while(true)
+    int b = 0;
+    while(b < 1000)
     {
         std::thread t1(func,"SampleMsg");
         std::thread t2(func,"SampleMsg");
@@ -52,6 +53,10 @@ int main(int argc, char *argv[])
         t7.join();
         t8.join();
         t9.join();
+
+        b++;
     }
+
+    BuhLog::shutDown();
     return a.exec();
 }
