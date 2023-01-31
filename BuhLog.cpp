@@ -8,7 +8,6 @@
 //STL
 #include <sstream>
 #include <iostream>
-#include <mutex>
 
 Q_LOGGING_CATEGORY(network,"network");
 Q_LOGGING_CATEGORY(server,"server");
@@ -18,14 +17,7 @@ bool BuhLog::logging_ = false;
 std::unique_ptr<LogManager> BuhLog::manager_ = std::make_unique<LogManager>();
 ThreadPool BuhLog::pool_ = ThreadPool(3);
 static const QtMessageHandler QT_DEFAULT_MESSAGE_HANDLER = qInstallMessageHandler(nullptr);
-std::mutex mut;
 
-void dumpToFile(QFile *file, const QString &logMsg)
-{
-    QTextStream ts(file);
-    ts << logMsg << "\n";
-    ts.flush();
-}
 
 BuhLog::BuhLog()
 {
